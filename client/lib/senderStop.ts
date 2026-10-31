@@ -53,6 +53,8 @@ export function senderCloseInterrupted(close: {
     progress: number;
     closedByUs: boolean;
     wireReason: boolean;
+    started?: boolean;
 }): boolean {
-    return !close.transferComplete && close.progress > 0 && !close.closedByUs && !close.wireReason;
+    const started = close.progress > 0 || close.started === true;
+    return !close.transferComplete && started && !close.closedByUs && !close.wireReason;
 }

@@ -73,6 +73,10 @@ describe('senderCloseInterrupted', () => {
         expect(senderCloseInterrupted({ ...base, progress: 0 })).toBe(false);
         expect(senderCloseInterrupted({ ...base, closedByUs: true })).toBe(false);
     });
+
+    it('says interrupted once a file started, though the current file reads 0%', () => {
+        expect(senderCloseInterrupted({ ...base, progress: 0, started: true })).toBe(true);
+    });
 });
 
 // P2PTransfer cannot be mounted here (vitest runs in node, with no DOM), so the
@@ -114,6 +118,21 @@ describe('how the sender page uses a stop', () => {
         expect(block).toContain('wireReasonRef.current = false;');
         expect(block).toContain('transferCompleteRef.current = false;');
         expect(block).toContain('progressRef.current = 0;');
+    });
+
+    it('latches that a file of this send started', () => {
+        const from = page.indexOf('The only place a sender session begins');
+        const begins = page.slice(from, page.indexOf("setStatus('Peer joined. Starting transfer');", from));
+        expect(begins).toContain('sendStartedRef.current = false;');
+        const at = page.indexOf('onFileStart: (i, _total, name) => {');
+        expect(at).toBeGreaterThan(-1);
+        expect(page.slice(at, page.indexOf('onProgress: (pct) => {', at))).toContain('sendStartedRef.current = true;');
+    });
+
+    it('asks the latch when the connection ends', () => {
+        expect(page).toContain('started: sendStartedRef.current,');
+        expect(page).toContain('if (transferCompleteRef.current || sendStartedRef.current) {');
+        expect(page).not.toContain('progressRef.current > 0');
     });
 });
 

@@ -242,6 +242,7 @@ export function P2PTransfer() {
     const linkAckFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const receivedFilesRef = useRef<ReceivedFile[]>([]);
     const transferCompleteRef = useRef(false);
+    const sendStartedRef = useRef(false);
     const progressRef = useRef(0);
     const fileListRef = useRef<HTMLDivElement>(null);
 
@@ -1137,6 +1138,8 @@ export function P2PTransfer() {
             // callbacks above, onReconnect, the room-full retry, and this
             // peer's close and error handlers) now see the send in hand.
             transferCompleteRef.current = false;
+            // Whether a file of this send has started; progressRef alone reads 0 again as each file starts.
+            sendStartedRef.current = false;
             progressRef.current = 0;
             setAllVerified(false);
             // A new recipient is a new send. Without this the rows kept the
@@ -1325,6 +1328,7 @@ export function P2PTransfer() {
                     senderCloseInterrupted({
                         transferComplete: transferCompleteRef.current,
                         progress: progressRef.current,
+                        started: sendStartedRef.current,
                         closedByUs: closedByUsRef.current === peer,
                         wireReason: wireReasonRef.current,
                     })
@@ -1340,7 +1344,7 @@ export function P2PTransfer() {
                 // refusal with "Connection interrupted" is the wrong-cause
                 // problem the receiver's own guard above already fixes.
                 if (wireReasonRef.current) return;
-                if (transferCompleteRef.current || progressRef.current > 0) {
+                if (transferCompleteRef.current || sendStartedRef.current) {
                     setStatus('Connection interrupted');
                     // A send that was still open stops here. One that was
                     // delivered stays delivered: every file had left this
@@ -1444,6 +1448,7 @@ export function P2PTransfer() {
             {
                 isDestroyed: () => peer.destroyed,
                 onFileStart: (i, _total, name) => {
+                    sendStartedRef.current = true;
                     setCurrentFileIndex(i);
                     setStatus(`Sending: ${name}`);
                     setProgress(0);
